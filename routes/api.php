@@ -4,6 +4,7 @@ use App\Http\Controllers\ApiAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProjectController;
 use Illuminate\Support\Facades\Route;
@@ -18,9 +19,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::middleware('tenant.extract')->group(function (): void {
         Route::post('/products', [ProductController::class, 'store']);
-        Route::post('imports/products', [ProductController::class, 'import']);
+        Route::post('/imports/products', [ProductController::class, 'import']);
         Route::get('/projects', [ProjectController::class, 'index']);
         Route::middleware('trottle:5,1')->get('products/{product}/image', [ProductController::class, 'image']);
-        Route::post('/api/imports/products', [ProductController::class, 'import']);
+        Route::get('/imports/{import}', [ProductImportController::class, 'show']);
     });
 });

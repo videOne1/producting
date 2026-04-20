@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\ProductImport;
 use App\Jobs\ProcessProductImportJob;
 use App\Models\Product;
 use App\Models\ProductImport as ModelsProductImport;
-use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -150,6 +148,7 @@ class ProductController extends Controller
     public function import(Request $request): JsonResponse
     {
         $tenantId = $request->attributes->get('tenant_id', $request->user()?->tenant_id);
+        $user = $request->user();
 
         if ($tenantId === null) {
             return response()->json([
@@ -157,23 +156,29 @@ class ProductController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
+        $request->validate([
             'file' => 'required|file|mimes:csv,txt'
         ]);
 
         $path = $request->file('file')->store(sprintf('uploads/tenant-%d', $tenantId));
 
-        $created =ModelsProductImport::create([
-           'file_path' => $path,
-           'tenant_id' => $tenantId,
-           'uploaded_by' => $request->user()->id
+        $created = ModelsProductImport::query()->create([
+            'file_path' => $path,
+            'tenant_id' => $tenantId,
+            'status' => 'pending',
+            'uploaded_by' => $user?->id,
         ]);
-        // ProcessProductImportJob::dispatch($path, (int) $tenantId);
 
-        if(! $created) {
+        if (! $created) {
             return response()->json(['message' => 'Import failed'], 500);
         }
-        
-        return response()->json(['message' => 'Import started'], 202);
+
+        ProcessProductImportJob::dispatch($created->id);
+
+        return response()->json([
+            'message' => 'Import started',
+            'import_id' => $created->id,
+            'status' => $created->status,
+        ], 202);
     }
 }

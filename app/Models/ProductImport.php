@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'file_path',
     'tenant_id',
     'status',
+    'started_at',
+    'finished_at',
     'processed_count',
     'failed_count',
     'error_message',
@@ -19,6 +21,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ProductImport extends Model
 {
     protected $table = 'product_import';
+
+    protected function casts(): array
+    {
+        return [
+            'started_at' => 'datetime',
+            'finished_at' => 'datetime',
+        ];
+    }
 
     public function uploader(): BelongsTo
     {
