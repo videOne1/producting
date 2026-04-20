@@ -43,9 +43,9 @@ class ProductImportController extends Controller
             ], 403);
         }
 
-        if($tenantId !== $productImport->tenant_id) {
+        if ((int) $tenantId !== (int) $productImport->tenant_id) {
             return response()->json([
-                'message' => 'Tenant access denied.',
+                'message' => 'Tenant not found.',
             ], 404);
         }
 
@@ -65,12 +65,17 @@ class ProductImportController extends Controller
             'error_message' => $product->error_message
         ];
 
-        $last10FailedRows = [];
-        if($product->failedRows()->count() > 0) {
-            $last10FailedRows = $product->failedRows()->limit(10)->get();
-        }
+        $failedRows = $productImport->failedRows()
+        ->latest('row_number')
+        ->limit(10)
+        ->get([
+            'row_number',
+            'failure_type',
+            'row_data',
+            'error_message',
+        ]);
 
-        $returnData['failed_rows'] = $last10FailedRows;
+        $returnData['failed_rows'] = $failedRows;
 
         return response()->json($returnData);
     }
