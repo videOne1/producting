@@ -23,5 +23,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('/projects', [ProjectController::class, 'index']);
         Route::middleware('trottle:5,1')->get('products/{product}/image', [ProductController::class, 'image']);
         Route::get('/imports/{import}', [ProductImportController::class, 'show']);
+        Route::post('/imports/{import}/retry', [ProductImportController::class, 'retry']);
     });
 });

@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessProductImportJob;
 use App\Models\ProductImport;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 class ProductImportController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Display a listing of the resource.
      */
@@ -45,7 +50,7 @@ class ProductImportController extends Controller
 
         if ((int) $tenantId !== (int) $productImport->tenant_id) {
             return response()->json([
-                'message' => 'Tenant not found.',
+                'message' => 'Product not found.',
             ], 404);
         }
 
@@ -94,5 +99,43 @@ class ProductImportController extends Controller
     public function destroy(ProductImport $productImport)
     {
         //
+    }
+
+    public function retry(ProductImport $productImport, Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $tenantId = (int) $request->attributes->get('tenant_id');
+
+        if ($user === null || $tenantId === 0) {
+            return response()->json([
+                'message' => 'Authenticated user is not linked to a tenant.',
+            ], 403);
+        }
+
+        if ((int) $user->tenant_id !== $tenantId) {
+            return response()->json([
+                'message' => 'Tenant access denied.',
+            ], 403);
+        }
+
+        if ((int) $productImport->tenant_id !== $tenantId) {
+            return response()->json([
+                'message' => 'Import not found.',
+            ], 404);
+        }
+
+        Gate::authorize('admin-only');
+
+        if ($productImport->status !== 'failed') {
+            return response()->json([
+                'message' => 'Import cannot be retried from its current status.',
+            ], 400);
+        }
+
+        ProcessProductImportJob::dispatch($productImport->id, true);
+
+        return response()->json([
+            'message' => 'Product import is being retried.',
+        ], 202);
     }
 }
